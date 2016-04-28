@@ -1,0 +1,5 @@
+Arduino einrichten:
+https://learn.adafruit.com/adafruit-feather-m0-basic-proto/setup
+
+Board einrichten:
+https://learn.adafruit.com/adafruit-feather-m0-basic-proto/using-with-arduino-ide
