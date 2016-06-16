@@ -167,9 +167,18 @@ void setup(void)
   digitalWrite(12, LOW);
   digitalWrite(13, LOW);
 }
-#define SONG Trillerpfeife
+#include"AchtungHintermann.raw.h"
+#include"Aus.raw.h"
+#include"DreiSekunden.raw.h"
+#include"HerzlichWillkommen.raw.h"
 #include"Trillerpfeife.raw.h"
-uint16_t trillerpfeifeSample = 0;
+#include"StilleHalbeSekunde.raw.h"
+uint16_t AchtungHintermannSample = 0;
+uint16_t AusSample = 0;
+uint16_t DreiSekundenSample = 0;
+uint16_t HerzlichWillkommenSample = 0;
+uint16_t TrillerpfeifeSample = 0;
+uint16_t StilleHalbeSekundeSample = 0;
 unsigned long timeForNextSample = 0;
 /**************************************************************************/
 /*!
@@ -193,11 +202,56 @@ void loop(void)
   //    ble.print(inputs);
   //  }
 
-  if (trillerpfeifeSample < sizeof(SONG)) {
+  if (StilleHalbeSekundeSample < sizeof(StilleHalbeSekunde)) {
 
     if (micros() >= timeForNextSample)
     {
-      analogWrite(10, SONG[trillerpfeifeSample++]);
+      analogWrite(10, StilleHalbeSekunde[StilleHalbeSekundeSample++]);
+      timeForNextSample += 125;
+    }
+
+  }
+  else if (AchtungHintermannSample < sizeof(AchtungHintermann)) {
+
+    if (micros() >= timeForNextSample)
+    {
+      analogWrite(10, AchtungHintermann[AchtungHintermannSample++]);
+      timeForNextSample += 125;
+    }
+
+  }
+  else if (AusSample < sizeof(Aus)) {
+
+    if (micros() >= timeForNextSample)
+    {
+      analogWrite(10, Aus[AusSample++]);
+      timeForNextSample += 125;
+    }
+
+  }
+  else if (DreiSekundenSample < sizeof(DreiSekunden)) {
+
+    if (micros() >= timeForNextSample)
+    {
+      analogWrite(10, DreiSekunden[DreiSekundenSample++]);
+      timeForNextSample += 125;
+    }
+
+  }
+  else if (HerzlichWillkommenSample < sizeof(HerzlichWillkommen)) {
+
+    if (micros() >= timeForNextSample)
+    {
+      analogWrite(10, HerzlichWillkommen[HerzlichWillkommenSample++]);
+      timeForNextSample += 125;
+    }
+
+  }
+  else if (TrillerpfeifeSample < sizeof(Trillerpfeife)) {
+
+    if (micros() >= timeForNextSample)
+    {
+      analogWrite(10, Trillerpfeife[TrillerpfeifeSample++]);
       timeForNextSample += 125;
     }
 
@@ -225,8 +279,14 @@ void loop(void)
         case 'j': digitalWrite(11, LOW); break;
         case 'k': digitalWrite(12, LOW); break;
         case 'l': digitalWrite(13, LOW); break;
+        case '1':AchtungHintermannSample = 0; timeForNextSample = micros()+125; break;
+        case '2':AusSample = 0; timeForNextSample = micros()+125; break;
+        case '3':DreiSekundenSample = 0; timeForNextSample = micros()+125; break;
+        case '4':HerzlichWillkommenSample = 0; timeForNextSample = micros()+125; break;
+        case 'p':StilleHalbeSekundeSample = 0; timeForNextSample = micros()+125; break;
+        case '5':
         case 't':
-        case 'T': trillerpfeifeSample = 0; timeForNextSample = micros() + 125; break;
+        case 'T': TrillerpfeifeSample = 0; timeForNextSample = micros() + 125; break;
 
 
       }
