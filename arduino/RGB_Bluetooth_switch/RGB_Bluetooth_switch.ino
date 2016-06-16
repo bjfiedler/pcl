@@ -173,12 +173,6 @@ void setup(void)
 #include"HerzlichWillkommen.raw.h"
 #include"Trillerpfeife.raw.h"
 #include"StilleHalbeSekunde.raw.h"
-uint16_t AchtungHintermannSample = 0;
-uint16_t AusSample = 0;
-uint16_t DreiSekundenSample = 0;
-uint16_t HerzlichWillkommenSample = 0;
-uint16_t TrillerpfeifeSample = 0;
-uint16_t StilleHalbeSekundeSample = 0;
 unsigned long timeForNextSample = 0;
 const unsigned char* sounds[] = {0, AchtungHintermann, Aus, DreiSekunden, HerzlichWillkommen, Trillerpfeife, StilleHalbeSekunde};
 const uint16_t soundLength[] = {0, sizeof(AchtungHintermann), sizeof(Aus), sizeof(DreiSekunden), sizeof(HerzlichWillkommen), sizeof(Trillerpfeife), sizeof(StilleHalbeSekunde)};
