@@ -167,10 +167,18 @@ void setup(void)
   digitalWrite(12, LOW);
   digitalWrite(13, LOW);
 }
-#define SONG Trillerpfeife
+#include"AchtungHintermann.raw.h"
+#include"Aus.raw.h"
+#include"DreiSekunden.raw.h"
+#include"HerzlichWillkommen.raw.h"
 #include"Trillerpfeife.raw.h"
-uint16_t trillerpfeifeSample = 0;
+#include"StilleHalbeSekunde.raw.h"
 unsigned long timeForNextSample = 0;
+const unsigned char* sounds[] = {0, AchtungHintermann, Aus, DreiSekunden, HerzlichWillkommen, Trillerpfeife, StilleHalbeSekunde};
+const uint16_t soundLength[] = {0, sizeof(AchtungHintermann), sizeof(Aus), sizeof(DreiSekunden), sizeof(HerzlichWillkommen), sizeof(Trillerpfeife), sizeof(StilleHalbeSekunde)};
+uint8_t currentSound = 0;
+uint16_t currentSample = 0;
+bool flash = false;
 /**************************************************************************/
 /*!
     @brief  Constantly poll for new command or response data
@@ -193,15 +201,20 @@ void loop(void)
   //    ble.print(inputs);
   //  }
 
-  if (trillerpfeifeSample < sizeof(SONG)) {
+  if (currentSound) {
+    if (micros() >= timeForNextSample) {
+      if (currentSample < soundLength[currentSound]) {
 
-    if (micros() >= timeForNextSample)
-    {
-      analogWrite(10, SONG[trillerpfeifeSample++]);
-      timeForNextSample += 125;
+        analogWrite(10, sounds[currentSound][currentSample++]);
+        timeForNextSample += 125;
+      }
+      else{
+      currentSound = 0;
+      }
     }
 
   }
+
   else
     // Echo received data
     //  while ( ble.available() )
@@ -225,8 +238,16 @@ void loop(void)
         case 'j': digitalWrite(11, LOW); break;
         case 'k': digitalWrite(12, LOW); break;
         case 'l': digitalWrite(13, LOW); break;
+        case '1': currentSample=0;currentSound=1; timeForNextSample = micros() + 125; break;
+        case '2': currentSample=0;currentSound=2; timeForNextSample = micros() + 125; break;
+        case '3': currentSample=0;currentSound=3; timeForNextSample = micros() + 125; break;
+        case '4': currentSample=0;currentSound=4; timeForNextSample = micros() + 125; break;
+        case 'p': currentSample=0;currentSound=6; timeForNextSample = micros() + 125; break;
+        case '5':
         case 't':
-        case 'T': trillerpfeifeSample = 0; timeForNextSample = micros() + 125; break;
+        case 'T': currentSample=0;currentSound=5; timeForNextSample = micros() + 125; break;
+        case 'F': flash = true; break;
+        case 'f': flash = false; break;
 
 
       }
