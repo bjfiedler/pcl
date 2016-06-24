@@ -2,8 +2,9 @@ package de.pcl.smartshirt;
 
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
-import java.awt.image.DataBuffer;
 import java.awt.image.DataBufferByte;
 import java.io.File;
 import java.io.IOException;
@@ -12,11 +13,17 @@ import java.util.List;
 
 import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
+import javax.swing.DefaultListModel;
 import javax.swing.ImageIcon;
+import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JSlider;
+import javax.swing.JTextField;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
 
 import org.opencv.core.Core;
 import org.opencv.core.Mat;
@@ -30,13 +37,18 @@ import org.opencv.imgproc.Imgproc;
 import org.opencv.videoio.VideoCapture;
  
 public class FindPlayer {
+	protected static ColorConfig cConfig;
+	
+	private static JList<String> cList;
+	private static JTextField configName;
 	
 	public static void main( String[] args ) throws InterruptedException {
 		System.loadLibrary(Core.NATIVE_LIBRARY_NAME);		
 	    Test t = new Test();
+	    cConfig = new ColorConfig();
 	    
-	    //Index: O - Externe Kamera
-	    //Index: 1 - Interne Kamera
+	    //Index: O - Externe Kamera (wenn vorhanden)
+	    //Index: 1 - Interne Kamera (wenn keine externe angeschlossen)
 	    VideoCapture camera = new VideoCapture(0);
 
         Mat frame = new Mat();
@@ -94,6 +106,62 @@ public class FindPlayer {
         	
         	jPanel.add(panelLow);
         	jPanel.add(panelUp);
+        	
+        	JButton save = new JButton("Save");
+        	save.addActionListener(new ActionListener() {
+				
+				@Override
+				public void actionPerformed(ActionEvent arg0) {
+					String name = configName.getText();
+					cConfig.saveConfig(name, 
+							hSilderLow.getValue(), 
+							sSilderLow.getValue(), 
+							vSilderLow.getValue(), 
+							hSilderUp.getValue(), 
+							sSilderUp.getValue(), 
+							vSilderUp.getValue());
+					updateConfigList();
+				}
+			});
+        	
+        	JButton remove = new JButton("Remove");
+        	remove.addActionListener(new ActionListener() {
+				
+				@Override
+				public void actionPerformed(ActionEvent arg0) {
+					String name = cList.getSelectedValue();
+					cConfig.removeConfig(name);
+					updateConfigList();
+				}
+			});
+        	
+        	configName = new JTextField("default");
+        	cList = new JList<String>();
+        	cList.addListSelectionListener(new ListSelectionListener() {
+				
+				@Override
+				public void valueChanged(ListSelectionEvent arg0) {
+					String name = cList.getSelectedValue();
+					if (name == null) {
+						return;
+					}
+					cConfig.selectConfig(cList.getSelectedValue());
+					configName.setText(name);
+					
+					hSilderLow.setValue(cConfig.getLowerH());
+					sSilderLow.setValue(cConfig.getLowerS());
+					vSilderLow.setValue(cConfig.getLowerV()); 
+					hSilderUp.setValue(cConfig.getUpperH());
+					sSilderUp.setValue(cConfig.getUpperS());
+					vSilderUp.setValue(cConfig.getUpperV());
+				}
+			});
+        	updateConfigList();
+        	
+        	jPanel.add(configName);
+        	jPanel.add(save);
+        	jPanel.add(cList);
+        	jPanel.add(remove);
 
         	jFrame.add(cPic);
         	jFrame.add(bwPic); 
@@ -109,19 +177,21 @@ public class FindPlayer {
             while (true) {        
                //if (camera.read(frame)) {
             		
-            		Thread.sleep(100);
             	
+            		/* --------------- For picture input --------------- */
+            		Thread.sleep(100);
             		BufferedImage image = null;
 					try {
 						image = ImageIO.read(new File("pics/blau.jpg"));
 					} catch (IOException e) {
-						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
 					
             		byte[] pixels = ((DataBufferByte) image.getRaster().getDataBuffer()).getData();
             		frame.put(0, 0, pixels);
-                	
+            		/* --------------- For picture input --------------- */
+            		
+            		
                 	Mat hsvFrame = new Mat();
                 	Imgproc.cvtColor(frame, hsvFrame, Imgproc.COLOR_BGR2HSV);             	
                 	
@@ -147,11 +217,13 @@ public class FindPlayer {
                 	bwFrame = imErode(bwFrame, 0, 5);
                 	bwFrame = imDialte(bwFrame, 0, 5);                	
                 	
+                	//RotatedRects im Bild finden
                 	List<RotatedRect> rects = findRectContour(bwFrame);
                 	
                 	//Convert to color pic
                 	Imgproc.cvtColor(bwFrame, bwFrame, Imgproc.COLOR_GRAY2BGR);
                 	
+                	//Gefundene RotatedRects ins Bild zeichnen
                 	for(RotatedRect r:rects) {
                 		Point[] pt = new Point[4];
                 		r.points(pt);
@@ -162,18 +234,25 @@ public class FindPlayer {
                 		}           
                 		
                 		Imgproc.circle(bwFrame, r.center, 2, color, 3);
-                		               		
-                		//Rect RotatedRect = r.boundingRect();
-                    	//Imgproc.rectangle(bwFrame, new Point(r.x,r.y), new Point(r.x+r.width,r.y+r.height), new Scalar(255, 0, 0), 5);
-                    	//Imgproc.rectangle(bwFrame, RotatedRect.tl(), RotatedRect.br(), new Scalar(255, 0, 0), 3, 8, 0);
                 	}
                 	
-                	if(rects.size() == 1) {
-                		//System.out.println("Distance: " + getDistance(rects.get(0).center, rects.get(1).center));
+                	//calculate and draw plaver oriantation
+                	if(rects.size() == 2) {                		
+                		ArrayList<Point> line1 = getLineFromRect(rects.get(0));
+                		ArrayList<Point> line2 = getLineFromRect(rects.get(1));
                 		
-                		getDirection(rects.get(0));
+                		Point pl1 = new Point(line1.get(0).x+line1.get(1).x*-10, line1.get(0).y+line1.get(1).y*-10);
+                		Point pl2 = new Point(line2.get(0).x+line2.get(1).x*-10, line2.get(0).y+line2.get(1).y*-10);
+
+                		Scalar color = new Scalar(0, 255, 0);
+                		Imgproc.line(bwFrame, line1.get(0), pl1, color);
+                		Imgproc.line(bwFrame, line2.get(0), pl2, color);
                 		
                 		
+                		Point pIntersection = getLineIntersection(line1, line2);
+                		
+                		color = new Scalar(255, 0, 0);
+                		Imgproc.circle(bwFrame, pIntersection, 2, color, 10);
                 	}
                 	
 //                	//Team 2 - Farbbereich grün
@@ -220,7 +299,6 @@ public class FindPlayer {
 		return destImg;
 	}
 
-	
 	public static Mat imDialte(Mat srcImg, int dilationElem, int dilationSize) {
 		int dilationType = 0;
 		if(dilationElem == 0) { 
@@ -243,10 +321,6 @@ public class FindPlayer {
 		Mat hierarchy = new Mat();
 		Imgproc.findContours(srcImg.clone(), contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
 		
-		//TODO: NOCH FALSCHE CONTOUREN DENKE ICH!!! SONST SOLLTE ES KLAPPEN! 
-		//SIEHE: http://answers.opencv.org/question/25755/drawing-bounding-box-in-java/
-		
-		//List<Rect> rectList = new ArrayList<Rect>();
 		List<RotatedRect> rectList = new ArrayList<RotatedRect>();
 		
 		MatOfPoint2f approxCurve = new MatOfPoint2f();
@@ -256,39 +330,141 @@ public class FindPlayer {
 	        //Processing on mMOP2f1 which is in type MatOfPoint2f
 	        double approxDistance = Imgproc.arcLength(contour2f, true)*0.02;
 	        Imgproc.approxPolyDP(contour2f, approxCurve, approxDistance, true);
-
-	        //Convert back to MatOfPoint
-	        MatOfPoint points = new MatOfPoint(approxCurve.toArray());
-
+	        
 	        //Get bounding rect of contour
-	        //Rect rect = Imgproc.boundingRect(points);
 			RotatedRect rect = Imgproc.minAreaRect(contour2f);
 	        rectList.add(rect);
 		}
 		return rectList;		
-	}
-	
-	
+	}	
 	
 	public static double getDistance(Point p1, Point p2) {
 		return Math.sqrt(Math.pow(p1.x-p2.x, 2) + Math.pow(p1.y-p2.y, 2));
 	}
 	
-	public static double getDirection(RotatedRect rect1) {
-		double dir = 0;
+//	public static double getDirection(RotatedRect rect) {
+//		double dir = 0;
+//		
+//		//System.out.println(rect1.angle);
+//		
+//		Point[] pt = new Point[4];
+//		rect.points(pt);		
+//		
+//		return dir;
+//	}
+	
+//	public static double getAngle(RotatedRect rect) {	
+//		double angle = 0;
+//				
+//		double h = rect.size.height;  
+//		double w = rect.size.width;
+//		double width = h>w ? h:w;
+//		
+//		
+//		Point[] pt = new Point[4];
+//		rect.points(pt);
+//		
+//		double min = Double.MAX_VALUE;
+//		Point p = null;
+//		Point q = null;
+//		for(int i=1; i<pt.length;i++) {
+//			double dist = getDistance(pt[0], pt[i]); 
+//			if(dist < min) {
+//				min = dist;
+//				p = pt[0];
+//				q = pt[i];
+//			}
+//		}
+//		
+//		Point v = new Point(p.x-q.x, p.y-q.y);	
+//		
+//		angle = Math.atan2(v.y, v.x);
+//		return angle;		
+//	}
+	
+	
+	
+	public static ArrayList<Point> getLineFromRect(RotatedRect rect) {
+		ArrayList<Point> line = new ArrayList<Point>();	
 		
-		System.out.println(rect1.angle);
+		Point[] pt = new Point[4];
+		rect.points(pt);
 		
-		return dir;
+		double min = Double.MAX_VALUE;
+		Point p = null;
+		Point q = null;
+		for(int i=1; i<pt.length;i++) {
+			double dist = getDistance(pt[0], pt[i]); 
+			if(dist < min) {
+				min = dist;
+				p = pt[0];
+				q = pt[i];
+			}
+		}
+		
+		Point v = new Point(p.x-q.x, p.y-q.y);
+		
+		line.add(p);
+		line.add(v);	
+		return line;
 	}
 	
-	public static double getAngle(RotatedRect rect) {
-		return 0;		
-	}
+	
+	
+	
+	public static Point getLineIntersection(ArrayList<Point> l1, ArrayList<Point> l2) {
+		Point intersectionPoint = null;		
+		/*
+		** Muss gegeben sein. a ist Aufpunkt der ersten Gerade, b Aufpunkt der zweiten.
+		** u ist Richtungsvektor der ersten Gerade, v der der zweiten.
+		*/
+		
+		double a1 = l1.get(0).x;
+		double a2 = l1.get(0).y;
+
+		double u1 = l1.get(1).x;
+		double u2 = l1.get(1).y;
+			
+		double b1 = l2.get(0).x;
+		double b2 = l2.get(0).y;
+		
+		double v1 = l2.get(1).x;
+		double v2 = l2.get(1).y;		
+		
+
+		double D = (u1*v2 - u2*v1);
+		if (D != 0) {
+		  //schneiden sich 
+		  double D1 = (b1-a1)*v2 - v1*(b2-a2);
+		  double D2 = u1*(b2-a2) - u2*(b1-a1);
+		  double lambda = D1/D;
+		  double my = -D2/D;
+		  double p1 = a1 + lambda*u1;
+		  double p2 = a2 + lambda*u2;
+		  
+		  intersectionPoint = new Point(p1,p2);
+		  
+		  
+		} else {
+		  // schneiden sich nicht
+		}
+	    
+		return intersectionPoint;
+		}
 	
 	
 	public static void generateAlert() {
-		
+		//TODO: Alert erzeugen
 	}
 	
+	
+	private static void updateConfigList() {
+		List<String> configs = cConfig.listConfigs();
+		DefaultListModel<String> model = new DefaultListModel<String>();
+
+		for (String c : configs) {
+			model.addElement(c);
+		}
+		cList.setModel(model);
+	}
 }
