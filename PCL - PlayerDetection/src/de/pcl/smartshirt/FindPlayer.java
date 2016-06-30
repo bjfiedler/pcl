@@ -39,7 +39,7 @@ import org.opencv.videoio.VideoCapture;
 public class FindPlayer {
 	protected static ColorConfig cConfig;
 
-	private static boolean cameraMode = true;
+	private static boolean cameraMode = false;
 
 	private static JList<String> cList;
 	private static JTextField configName;
@@ -177,11 +177,10 @@ public class FindPlayer {
 			boolean firstRun = true;
 
 			while (true) {
+				Thread.sleep(100);
 				
 				// Initialize frame
-				
 				if (!cameraMode) { // Initialize frame from picture
-					Thread.sleep(100);
 					BufferedImage image = null;
 					try {
 						image = ImageIO.read(new File("pics/blau.jpg"));
@@ -196,7 +195,6 @@ public class FindPlayer {
 				}
 
 				// Process Frame
-				
 				Mat hsvFrame = new Mat();
 				Imgproc.cvtColor(frame, hsvFrame, Imgproc.COLOR_BGR2HSV);             	
 
@@ -240,32 +238,57 @@ public class FindPlayer {
 
 					Imgproc.circle(bwFrame, r.center, 2, color, 3);
 				}
-
+				
+				//=============================================================================================
+				//=============================================================================================				
+				
 				//calculate and draw plaver oriantation
-				if(rects.size() == 2) {                		
-					ArrayList<Point> line1 = getLineFromRect(rects.get(0));
-					ArrayList<Point> line2 = getLineFromRect(rects.get(1));
+				if(rects.size() != 0 && rects.size() % 2 == 0) { 
+					//Get closest edges from two rectangles
+					ArrayList<Point> startPoints = getStartPointsFromRec(rects.get(0), rects.get(1));
+					
+					//Get line (short side) for each rectangle
+					ArrayList<Point> line1 = getLineFromRect(startPoints.get(0), rects.get(0));
+					ArrayList<Point> line2 = getLineFromRect(startPoints.get(1), rects.get(1));
 
-					Point pl1 = new Point(line1.get(0).x+line1.get(1).x*-10, line1.get(0).y+line1.get(1).y*-10);
-					Point pl2 = new Point(line2.get(0).x+line2.get(1).x*-10, line2.get(0).y+line2.get(1).y*-10);
-
-					Scalar color = new Scalar(0, 255, 0);
-					Imgproc.line(bwFrame, line1.get(0), pl1, color);
-					Imgproc.line(bwFrame, line2.get(0), pl2, color);
-
-
+					//Get Intersection point (null if non exists)
 					Point pIntersection = getLineIntersection(line1, line2);
+					if(pIntersection != null) {
 
-					color = new Scalar(255, 0, 0);
-					Imgproc.circle(bwFrame, pIntersection, 2, color, 10);
+						//Draw green rectangle for player direction visualisation
+						Scalar color = new Scalar(0, 255, 0);
+						Imgproc.line(bwFrame, pIntersection, line1.get(0), color);
+						Imgproc.line(bwFrame, pIntersection, line2.get(0), color);
+						Imgproc.line(bwFrame, startPoints.get(0), startPoints.get(1), color);
+
+						//Draw intersection point for player direction visualisation
+						color = new Scalar(255, 0, 0);
+						Imgproc.circle(bwFrame, pIntersection, 2, color, 10);
+						
+						//Get player orientation vector and value
+						Point pOrthToPoint = getOrthogonalIntersectionPoint(pIntersection, startPoints.get(0), getDeirectionalVectorForLine(startPoints.get(0), startPoints.get(1)));
+						double playerOrientation = getDirection(pOrthToPoint, pIntersection);
+
+						//Draw player orientation vector
+						//Imgproc.circle(bwFrame, newP, 2, color, 10);
+						color = new Scalar(0, 0, 255);
+						Imgproc.line(bwFrame, pOrthToPoint, pIntersection, color);
+						
+						//TODO: Handle Events!
+						System.out.println(playerOrientation);
+					}					
 				}
 
-				//                	//Team 2 - Farbbereich grün
-				//                	Mat destFrame = new Mat();
-				//                	Scalar lowerb = new Scalar(hSilderLow.getValue(), sSilderLow.getValue(), vSilderLow.getValue());
-				//                	Scalar upperb = new Scalar(hSilderUp.getValue(), sSilderUp.getValue(), vSilderUp.getValue());
-				//                	Core.inRange(hsvFrame, lowerb, upperb, destFrame);
+				//=============================================================================================
+				//=============================================================================================	
+				
+//            	//Team 2 - Farbbereich grün
+//            	Mat destFrame = new Mat();
+//            	Scalar lowerb = new Scalar(hSilderLow.getValue(), sSilderLow.getValue(), vSilderLow.getValue());
+//            	Scalar upperb = new Scalar(hSilderUp.getValue(), sSilderUp.getValue(), vSilderUp.getValue());
+//            	Core.inRange(hsvFrame, lowerb, upperb, destFrame);
 
+				//Visualize results
 				Size s = new Size(640, 480);
 				Imgproc.resize(bwFrame, bwFrame, s);
 				Imgproc.resize(frame, frame, s);
@@ -275,7 +298,6 @@ public class FindPlayer {
 				cPic.setIcon(new ImageIcon(cImage));                    
 				bwPic.setIcon(new ImageIcon(bwImage));
 
-
 				if(firstRun) {
 					firstRun = !firstRun;
 					jFrame.setLocationRelativeTo(null);
@@ -283,11 +305,7 @@ public class FindPlayer {
 				}
 			}
 		}   
-
-
-		if (cameraMode) {
-			camera.release();
-		}
+		if (cameraMode) { camera.release(); }
 	}
 
 	public static Mat imErode(Mat srcImg, int erosionElem, int erosionSize) {
@@ -326,11 +344,8 @@ public class FindPlayer {
 
 	public static List<RotatedRect> findRectContour(Mat srcImg) {		
 		List<MatOfPoint> contours = new ArrayList<MatOfPoint>();
-		Mat hierarchy = new Mat();
-		Imgproc.findContours(srcImg.clone(), contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
-
+		Imgproc.findContours(srcImg.clone(), contours, new Mat(), Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
 		List<RotatedRect> rectList = new ArrayList<RotatedRect>();
-
 		MatOfPoint2f approxCurve = new MatOfPoint2f();
 		for(int i = 0; i< contours.size(); i++) {			
 			//Convert contours(i) from MatOfPoint to MatOfPoint2f
@@ -338,7 +353,6 @@ public class FindPlayer {
 			//Processing on mMOP2f1 which is in type MatOfPoint2f
 			double approxDistance = Imgproc.arcLength(contour2f, true)*0.02;
 			Imgproc.approxPolyDP(contour2f, approxCurve, approxDistance, true);
-
 			//Get bounding rect of contour
 			RotatedRect rect = Imgproc.minAreaRect(contour2f);
 			rectList.add(rect);
@@ -350,76 +364,82 @@ public class FindPlayer {
 		return Math.sqrt(Math.pow(p1.x-p2.x, 2) + Math.pow(p1.y-p2.y, 2));
 	}
 
-	//	public static double getDirection(RotatedRect rect) {
-	//		double dir = 0;
-	//		
-	//		//System.out.println(rect1.angle);
-	//		
-	//		Point[] pt = new Point[4];
-	//		rect.points(pt);		
-	//		
-	//		return dir;
-	//	}
+	public static double getDirection(Point p1, Point p2) {
+		Point v = new Point((p1.x-p2.x)/getDistance(p1, p2), (p1.y-p2.y)/getDistance(p1, p2));			
+		return Math.atan2(v.y, v.x);
+	}
 
-	//	public static double getAngle(RotatedRect rect) {	
-	//		double angle = 0;
-	//				
-	//		double h = rect.size.height;  
-	//		double w = rect.size.width;
-	//		double width = h>w ? h:w;
-	//		
-	//		
-	//		Point[] pt = new Point[4];
-	//		rect.points(pt);
-	//		
-	//		double min = Double.MAX_VALUE;
-	//		Point p = null;
-	//		Point q = null;
-	//		for(int i=1; i<pt.length;i++) {
-	//			double dist = getDistance(pt[0], pt[i]); 
-	//			if(dist < min) {
-	//				min = dist;
-	//				p = pt[0];
-	//				q = pt[i];
-	//			}
-	//		}
-	//		
-	//		Point v = new Point(p.x-q.x, p.y-q.y);	
-	//		
-	//		angle = Math.atan2(v.y, v.x);
-	//		return angle;		
-	//	}
-
-
-
-	public static ArrayList<Point> getLineFromRect(RotatedRect rect) {
+	public static ArrayList<Point> getLineFromRect(Point startPoint, RotatedRect rect) {
 		ArrayList<Point> line = new ArrayList<Point>();	
 
 		Point[] pt = new Point[4];
 		rect.points(pt);
 
 		double min = Double.MAX_VALUE;
-		Point p = null;
+		Point p = startPoint;
 		Point q = null;
-		for(int i=1; i<pt.length;i++) {
-			double dist = getDistance(pt[0], pt[i]); 
-			if(dist < min) {
-				min = dist;
-				p = pt[0];
-				q = pt[i];
+		for(int i=0; i<pt.length;i++) {
+			if(!pt[i].equals(startPoint)) {
+			
+				double dist = getDistance(p, pt[i]); 
+				if(dist < min) {
+					min = dist;
+					q = pt[i];
+				}
 			}
 		}
 
-		Point v = new Point(p.x-q.x, p.y-q.y);
+		Point v = getDeirectionalVectorForLine(p, q);
 
 		line.add(p);
 		line.add(v);	
 		return line;
 	}
 
-
-
-
+	
+	public static ArrayList<Point> getStartPointsFromRec(RotatedRect rect1, RotatedRect rect2) {
+		ArrayList<Point> startPoints = new ArrayList<Point>();
+		
+		Point[] ptsRec1 = new Point[4];
+		rect1.points(ptsRec1);
+		Point[] ptsRec2 = new Point[4];
+		rect2.points(ptsRec2);
+		
+		Point start1 = null;
+		Point start2 = null;
+		double minDist = Double.MAX_VALUE;
+		
+		for(Point p1:ptsRec1) {
+			for(Point p2:ptsRec2) {
+				if(getDistance(p1, p2) < minDist) {
+					minDist = getDistance(p1, p2);
+					start1 = p1;
+					start2 = p2;
+				}
+			}
+		}
+		
+		startPoints.add(start1);
+		startPoints.add(start2);	
+		return startPoints;
+	}	
+	
+	public static Point getOrthogonalIntersectionPoint(Point p, Point linePoint, Point lineVector) {		
+		Point newP = new Point((linePoint.x-p.x)*lineVector.x, (linePoint.y-p.y)*lineVector.y); 
+		Point newV = new Point(lineVector.x*lineVector.x, lineVector.y*lineVector.y);
+		
+		double sumNewP = -1*(newP.x+newP.y);
+		double sumNewV = newV.x+newV.y;
+		
+		double r = sumNewP/sumNewV;
+		return new Point(linePoint.x+r*lineVector.x, linePoint.y+r*lineVector.y);
+	}
+	
+	
+	public static Point getDeirectionalVectorForLine(Point p1, Point p2) {
+		return new Point(p1.x-p2.x, p1.y-p2.y);
+	}
+	
 	public static Point getLineIntersection(ArrayList<Point> l1, ArrayList<Point> l2) {
 		Point intersectionPoint = null;		
 		/*
@@ -441,8 +461,7 @@ public class FindPlayer {
 
 
 		double D = (u1*v2 - u2*v1);
-		if (D != 0) {
-			//schneiden sich 
+		if (D != 0) { //schneiden sich 
 			double D1 = (b1-a1)*v2 - v1*(b2-a2);
 			double D2 = u1*(b2-a2) - u2*(b1-a1);
 			double lambda = D1/D;
@@ -451,20 +470,14 @@ public class FindPlayer {
 			double p2 = a2 + lambda*u2;
 
 			intersectionPoint = new Point(p1,p2);
-
-
-		} else {
-			// schneiden sich nicht
-		}
+		} 
 
 		return intersectionPoint;
 	}
 
-
 	public static void generateAlert() {
 		//TODO: Alert erzeugen
 	}
-
 
 	private static void updateConfigList() {
 		List<String> configs = cConfig.listConfigs();
