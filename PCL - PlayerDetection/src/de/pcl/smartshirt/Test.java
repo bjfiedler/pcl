@@ -61,7 +61,7 @@ public class Test extends JPanel {
         return img;
     }
 
-    public BufferedImage MatToBufferedImage(Mat frame) {
+    public static BufferedImage MatToBufferedImage(Mat frame) {
         //Mat() to BufferedImage
         int type = 0;
         if (frame.channels() == 1) {

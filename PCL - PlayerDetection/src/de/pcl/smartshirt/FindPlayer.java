@@ -37,18 +37,19 @@ import org.opencv.imgproc.Imgproc;
 import org.opencv.videoio.VideoCapture;
 
 public class FindPlayer {
-	protected static ColorConfig cConfig;
-
 	private static boolean cameraMode = false;
 
-	private static JList<String> cList;
-	private static JTextField configName;
+	
 
 	public static void main( String[] args ) throws InterruptedException {
 		System.loadLibrary(Core.NATIVE_LIBRARY_NAME);		
 		Test t = new Test();
-		cConfig = new ColorConfig();
-
+		FindPlayerView view = new FindPlayerView();
+		Scalar lowerb = new Scalar(0, 0, 0);
+		Scalar upperb = new Scalar(0, 0, 0);
+		view.registerLowerBoundScalar(lowerb);
+		view.registerUpperBoundScalar(upperb);
+		
 		//Index: O - Externe Kamera (wenn vorhanden)
 		//Index: 1 - Interne Kamera (wenn keine externe angeschlossen)
 		VideoCapture camera = new VideoCapture(0);
@@ -59,121 +60,6 @@ public class FindPlayer {
 		if(!camera.isOpened() && cameraMode) {
 			System.out.println("CameraError");
 		} else {                  
-			JFrame jFrame = new JFrame();        	
-			JPanel jPanel = new JPanel();
-			JPanel panelLow = new JPanel();
-			JPanel panelUp = new JPanel();
-
-			FlowLayout flowLayout = new FlowLayout();	
-			GridLayout gridLayout = new GridLayout(0, 2);
-
-			jFrame.setLayout(flowLayout);
-			jPanel.setLayout(flowLayout);
-			panelLow.setLayout(gridLayout);
-			panelUp.setLayout(gridLayout);
-
-			panelLow.setBorder(BorderFactory.createTitledBorder("HSV-Lower-Range"));
-			panelUp.setBorder(BorderFactory.createTitledBorder("HSV-Upper-Range"));
-
-			JLabel cPic = new JLabel();
-			JLabel bwPic = new JLabel();
-
-			JLabel hLow = new JLabel("H-Lower:");
-			JLabel sLow = new JLabel("S-Lower:");
-			JLabel vLow = new JLabel("V-Lower:");
-			JSlider hSilderLow = new JSlider(0, 360, 0);
-			JSlider sSilderLow = new JSlider(0, 255, 100);
-			JSlider vSilderLow = new JSlider(0, 255, 100);
-
-			JLabel hUp = new JLabel("H-Upper:");
-			JLabel sUp = new JLabel("S-Upper:");
-			JLabel vUp = new JLabel("V-Upper:");
-			JSlider hSilderUp = new JSlider(0, 360, 0);
-			JSlider sSilderUp = new JSlider(0, 255, 255);
-			JSlider vSilderUp = new JSlider(0, 255, 255);  
-
-			panelLow.add(hLow);
-			panelLow.add(hSilderLow);
-			panelLow.add(sLow);
-			panelLow.add(sSilderLow);
-			panelLow.add(vLow);
-			panelLow.add(vSilderLow);
-
-			panelUp.add(hUp);
-			panelUp.add(hSilderUp);
-			panelUp.add(sUp);
-			panelUp.add(sSilderUp);
-			panelUp.add(vUp);
-			panelUp.add(vSilderUp); 
-
-			jPanel.add(panelLow);
-			jPanel.add(panelUp);
-
-			JButton save = new JButton("Save");
-			save.addActionListener(new ActionListener() {
-
-				@Override
-				public void actionPerformed(ActionEvent arg0) {
-					String name = configName.getText();
-					cConfig.saveConfig(name, 
-							hSilderLow.getValue(), 
-							sSilderLow.getValue(), 
-							vSilderLow.getValue(), 
-							hSilderUp.getValue(), 
-							sSilderUp.getValue(), 
-							vSilderUp.getValue());
-					updateConfigList();
-				}
-			});
-
-			JButton remove = new JButton("Remove");
-			remove.addActionListener(new ActionListener() {
-
-				@Override
-				public void actionPerformed(ActionEvent arg0) {
-					String name = cList.getSelectedValue();
-					cConfig.removeConfig(name);
-					updateConfigList();
-				}
-			});
-
-			configName = new JTextField("default");
-			cList = new JList<String>();
-			cList.addListSelectionListener(new ListSelectionListener() {
-
-				@Override
-				public void valueChanged(ListSelectionEvent arg0) {
-					String name = cList.getSelectedValue();
-					if (name == null) {
-						return;
-					}
-					cConfig.selectConfig(cList.getSelectedValue());
-					configName.setText(name);
-
-					hSilderLow.setValue(cConfig.getLowerH());
-					sSilderLow.setValue(cConfig.getLowerS());
-					vSilderLow.setValue(cConfig.getLowerV()); 
-					hSilderUp.setValue(cConfig.getUpperH());
-					sSilderUp.setValue(cConfig.getUpperS());
-					vSilderUp.setValue(cConfig.getUpperV());
-				}
-			});
-			updateConfigList();
-
-			jPanel.add(configName);
-			jPanel.add(save);
-			jPanel.add(cList);
-			jPanel.add(remove);
-
-			jFrame.add(cPic);
-			jFrame.add(bwPic); 
-			jFrame.add(jPanel);        
-
-			jFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-			jFrame.setTitle("LiveStream BlackWhite");
-			jFrame.setSize(1300, 630);
-			jFrame.setVisible(false);   
-
 			boolean firstRun = true;
 
 			while (true) {
@@ -198,18 +84,13 @@ public class FindPlayer {
 				Mat hsvFrame = new Mat();
 				Imgproc.cvtColor(frame, hsvFrame, Imgproc.COLOR_BGR2HSV);             	
 
-				hLow.setText("H-Lower: " + hSilderLow.getValue());
-				sLow.setText("S-Lower: " + sSilderLow.getValue());
-				vLow.setText("V-Lower: " + vSilderLow.getValue());
-
-				hUp.setText("H-Upper: " + hSilderUp.getValue());
-				sUp.setText("S-Upper: " + sSilderUp.getValue());
-				vUp.setText("V-Upper: " + vSilderUp.getValue());
+				
 
 				//Team 1 - Farbbereich blau
 				Mat bwFrame = new Mat();
-				Scalar lowerb = new Scalar(hSilderLow.getValue(), sSilderLow.getValue(), vSilderLow.getValue());
-				Scalar upperb = new Scalar(hSilderUp.getValue(), sSilderUp.getValue(), vSilderUp.getValue());
+				//Scalar lowerb = new Scalar(hSilderLow.getValue(), sSilderLow.getValue(), vSilderLow.getValue());
+				//Scalar upperb = new Scalar(hSilderUp.getValue(), sSilderUp.getValue(), vSilderUp.getValue());
+				
 				Core.inRange(hsvFrame, lowerb, upperb, bwFrame);
 
 				//morphologische Basis-Operation: Closing (Dilatation>Erosion)
@@ -289,19 +170,11 @@ public class FindPlayer {
 //            	Core.inRange(hsvFrame, lowerb, upperb, destFrame);
 
 				//Visualize results
-				Size s = new Size(640, 480);
-				Imgproc.resize(bwFrame, bwFrame, s);
-				Imgproc.resize(frame, frame, s);
-
-				BufferedImage cImage = t.MatToBufferedImage(frame);
-				BufferedImage bwImage = t.MatToBufferedImage(bwFrame);
-				cPic.setIcon(new ImageIcon(cImage));                    
-				bwPic.setIcon(new ImageIcon(bwImage));
-
+				view.updateView(bwFrame, frame);
+				
 				if(firstRun) {
 					firstRun = !firstRun;
-					jFrame.setLocationRelativeTo(null);
-					jFrame.setVisible(true);   
+					view.show();
 				}
 			}
 		}   
@@ -477,15 +350,5 @@ public class FindPlayer {
 
 	public static void generateAlert() {
 		//TODO: Alert erzeugen
-	}
-
-	private static void updateConfigList() {
-		List<String> configs = cConfig.listConfigs();
-		DefaultListModel<String> model = new DefaultListModel<String>();
-
-		for (String c : configs) {
-			model.addElement(c);
-		}
-		cList.setModel(model);
 	}
 }
