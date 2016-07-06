@@ -57,7 +57,7 @@ public class FindPlayer {
 		Mat frame = new Mat();
 		camera.read(frame); 
 
-		if(!camera.isOpened() && cameraMode) {
+		if(!camera.isOpened() && view.isCameraMode()) {
 			System.out.println("CameraError");
 		} else {                  
 			boolean firstRun = true;
@@ -66,7 +66,7 @@ public class FindPlayer {
 				Thread.sleep(100);
 				
 				// Initialize frame
-				if (!cameraMode) { // Initialize frame from picture
+				if (!view.isCameraMode()) { // Initialize frame from picture
 					BufferedImage image = null;
 					try {
 						image = ImageIO.read(new File("pics/blau.jpg"));
@@ -178,7 +178,7 @@ public class FindPlayer {
 				}
 			}
 		}   
-		if (cameraMode) { camera.release(); }
+		if (view.isCameraMode()) { camera.release(); }
 	}
 
 	public static Mat imErode(Mat srcImg, int erosionElem, int erosionSize) {

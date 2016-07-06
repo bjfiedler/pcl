@@ -5,7 +5,6 @@ import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
-import java.nio.LongBuffer;
 import java.util.List;
 
 import javax.swing.BorderFactory;
@@ -30,6 +29,7 @@ import org.opencv.imgproc.Imgproc;
 
 public class FindPlayerView {
 	protected static ColorConfig cConfig;
+	private boolean cameraMode = false;
 
 	private static JList<String> cList;
 	private static JTextField configName;
@@ -211,6 +211,15 @@ public class FindPlayerView {
 				updateConfigList();
 			}
 		});
+		
+		JButton switchMode = new JButton("Switch Input Mode");
+		switchMode.addActionListener(new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				cameraMode = !cameraMode;
+			}
+		});
 
 		configName = new JTextField("default");
 		cList = new JList<String>();
@@ -242,25 +251,14 @@ public class FindPlayerView {
 
 		jFrame.add(originalPic);
 		jFrame.add(processedPic); 
-		jFrame.add(jPanel);        
+		jFrame.add(jPanel); 
+		jFrame.add(switchMode);
 
 		jFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		jFrame.setTitle("LiveStream BlackWhite");
 		jFrame.setSize(1380, 630);
 		jFrame.setVisible(false);   
 
-	}
-	
-	
-	
-	public void updateSlider() {
-		hLow.setText("H-Lower: " + hSliderLow.getValue());
-		sLow.setText("S-Lower: " + sSliderLow.getValue());
-		vLow.setText("V-Lower: " + vSliderLow.getValue());
-
-		hUp.setText("H-Upper: " + hSliderUp.getValue());
-		sUp.setText("S-Upper: " + sSliderUp.getValue());
-		vUp.setText("V-Upper: " + vSliderUp.getValue());
 	}
 	
 	
@@ -295,6 +293,12 @@ public class FindPlayerView {
 	public void show() {
 		jFrame.setLocationRelativeTo(null);
 		jFrame.setVisible(true);   
+	}
+	
+	
+	
+	public boolean isCameraMode() {
+		return cameraMode;
 	}
 	
 	
