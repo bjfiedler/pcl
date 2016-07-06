@@ -81,19 +81,19 @@ public class FindPlayerView {
 		originalPic = new JLabel();
 		processedPic = new JLabel();
 
-		hLow = new JLabel("H-Lower:");
-		sLow = new JLabel("S-Lower:");
-		vLow = new JLabel("V-Lower:");
 		hSliderLow = new JSlider(0, 360, 0);
 		sSliderLow = new JSlider(0, 255, 100);
 		vSliderLow = new JSlider(0, 255, 100);
+		hLow = new JLabel("H-Lower: " + hSliderLow.getValue());
+		sLow = new JLabel("S-Lower: " + sSliderLow.getValue());
+		vLow = new JLabel("V-Lower: " + vSliderLow.getValue());
 
-		hUp = new JLabel("H-Upper:");
-		sUp = new JLabel("S-Upper:");
-		vUp = new JLabel("V-Upper:");
 		hSliderUp = new JSlider(0, 360, 0);
 		sSliderUp = new JSlider(0, 255, 255);
 		vSliderUp = new JSlider(0, 255, 255);
+		hUp = new JLabel("H-Upper: " + hSliderUp.getValue());
+		sUp = new JLabel("S-Upper: " + sSliderUp.getValue());
+		vUp = new JLabel("V-Upper: " + vSliderUp.getValue());
 		
 		hSliderLow.addChangeListener(new ChangeListener() {
 			
@@ -103,7 +103,6 @@ public class FindPlayerView {
 				if (lowerBoundScalar != null) {
 					double[] val = lowerBoundScalar.val;
 					val[0] = hSliderLow.getValue();
-					lowerBoundScalar.set(val);
 				}
 			}
 		});
@@ -116,7 +115,6 @@ public class FindPlayerView {
 				if (lowerBoundScalar != null) {
 					double[] val = lowerBoundScalar.val;
 					val[1] = sSliderLow.getValue();
-					lowerBoundScalar.set(val);
 				}
 			}
 		});
@@ -129,7 +127,6 @@ public class FindPlayerView {
 				if (lowerBoundScalar != null) {
 					double[] val = lowerBoundScalar.val;
 					val[2] = vSliderLow.getValue();
-					lowerBoundScalar.set(val);
 				}
 			}
 		});
@@ -142,7 +139,6 @@ public class FindPlayerView {
 				if (upperBoundScalar != null) {
 					double[] val = upperBoundScalar.val;
 					val[0] = hSliderUp.getValue();
-					upperBoundScalar.set(val);
 				}
 			}
 		});
@@ -155,7 +151,6 @@ public class FindPlayerView {
 				if (upperBoundScalar != null) {
 					double[] val = upperBoundScalar.val;
 					val[1] = sSliderUp.getValue();
-					upperBoundScalar.set(val);
 				}
 			}
 		});
@@ -168,7 +163,6 @@ public class FindPlayerView {
 				if (upperBoundScalar != null) {
 					double[] val = upperBoundScalar.val;
 					val[2] = vSliderUp.getValue();
-					upperBoundScalar.set(val);
 				}
 			}
 		});
@@ -252,7 +246,7 @@ public class FindPlayerView {
 
 		jFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		jFrame.setTitle("LiveStream BlackWhite");
-		jFrame.setSize(1300, 630);
+		jFrame.setSize(1380, 630);
 		jFrame.setVisible(false);   
 
 	}
@@ -286,12 +280,14 @@ public class FindPlayerView {
 	
 	public void registerLowerBoundScalar(Scalar lb) {
 		lowerBoundScalar = lb;
+		lb.set(new double[] {hSliderLow.getValue(), sSliderLow.getValue(), vSliderLow.getValue()});
 	}
 	
 	
 	
 	public void registerUpperBoundScalar(Scalar ub) {
 		upperBoundScalar = ub;
+		ub.set(new double[] {hSliderUp.getValue(), sSliderUp.getValue(), vSliderUp.getValue()});
 	}
 	
 	
