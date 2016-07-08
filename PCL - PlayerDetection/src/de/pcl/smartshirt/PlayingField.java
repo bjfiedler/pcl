@@ -14,17 +14,24 @@ public class PlayingField {
 	private static double DIRECTION_DOWN_LEFT = -0.75;
 	private static double DIRECTION_TRESHOLD = 0.2;
 	
+	public static final int NOT_ATTACKED = -1;
+	public static final int ATTACK_DIRECTION_BEHIND = 0;
+	public static final int ATTACK_DIRECTION_LEFT = 1;
+	public static final int ATTACK_DIRECTION_RIGHT = 2;
 	
 	private ArrayList<Player> blueTeam;
 	private ArrayList<Player> greenTeam;
 	
-	public boolean isPlayerAttacked(Player blue, Player green) {
-		/* TODO if player are looking at each other return false
-		if (!(blue.getDirection() >= (green.getDirection() - DIRECTION_TRESHOLD) &&
-				blue.getDirection() <= (green.getDirection() + DIRECTION_TRESHOLD))) {
-			return false;
+	public int isPlayerAttacked(Player blue, Player green) {
+		// TODO if player are looking at each other return false
+		if ((isLeft(blue.getDirection()) && isRight(green.getDirection())) || 
+				(isLeft(green.getDirection()) && isRight(blue.getDirection())) ||
+				(isUp(blue.getDirection()) && isDown(green.getDirection())) ||
+				(isUp(green.getDirection()) && isDown(blue.getDirection())) 				
+				) {
+			return NOT_ATTACKED;
 		}
-		*/
+		
 		
 		// Check direction in combination with position
 		
@@ -32,29 +39,30 @@ public class PlayingField {
 			// <-blue   <-green
 			// blue.x < green.x
 			if (blue.getPosition().x < green.getPosition().x) {
-				return true;
-			}
+				return ATTACK_DIRECTION_BEHIND;
+			} 
+			
 		} else if (isUp(blue.getDirection())) {
 			// blue
 			// green
 			if (blue.getPosition().y < green.getPosition().y) {
-				return true;
+				return ATTACK_DIRECTION_BEHIND;
 			}
 		} else if (isRight(blue.getDirection())) {
 			// green-> blue->
 			// blue.x < green.x
 			if (blue.getPosition().x > green.getPosition().x) {
-				return true;
+				return ATTACK_DIRECTION_BEHIND;
 			}
 		} else if (isDown(blue.getDirection())) {
 			// green
 			// blue
 			if (blue.getPosition().y > green.getPosition().y) {
-				return true;
+				return ATTACK_DIRECTION_BEHIND;
 			}
 		}
 		
-		return false;
+		return NOT_ATTACKED;
 	}
 	
 	

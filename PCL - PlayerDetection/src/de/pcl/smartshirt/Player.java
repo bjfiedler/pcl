@@ -3,7 +3,6 @@ package de.pcl.smartshirt;
 import org.opencv.core.Point;
 
 public class Player {
-	protected double directionThreshold = 0.2;
 	private int id;
 	private String team;
 	private Point position;
@@ -38,16 +37,5 @@ public class Player {
 
 	public String getTeam() {
 		return team;
-	}
-	
-	public boolean isLookingAtPlayer(Player player) {
-		// If both player are not looking in the same direction return false
-		if (!(this.getDirection() >= (player.getDirection() - directionThreshold) &&
-				this.getDirection() <= (player.getDirection() + directionThreshold))) {
-			return false;
-		}
-		
-		// TODO determine if this player is behind or in front of the other player
-		return false;
 	}
 }

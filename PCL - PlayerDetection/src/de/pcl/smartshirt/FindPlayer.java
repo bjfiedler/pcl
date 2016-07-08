@@ -40,8 +40,8 @@ public class FindPlayer {
 	private static boolean cameraMode = false;
 	private static Scalar lowerBoundBlue = new Scalar(0, 0, 0); 
 	private static Scalar upperBoundBlue = new Scalar(0, 0, 0);
-	private static Scalar lowerBoundGreen = new Scalar(0, 0, 0);
-	private static Scalar upperBoundGreen = new Scalar(0, 0, 0);
+	private static Scalar lowerBoundGreen = new Scalar(0, 46, 60);
+	private static Scalar upperBoundGreen = new Scalar(80, 255, 255);
 	private static final String BLUE_TEAM = "BLUE_TEAM";
 	private static final String GREEN_TEAM = "GREEN_TEAM";
 	
@@ -53,10 +53,12 @@ public class FindPlayer {
 		FindPlayerView view = new FindPlayerView();
 		view.registerLowerBoundScalar(lowerBoundBlue);
 		view.registerUpperBoundScalar(upperBoundBlue);
+		view.registerLowerBoundScalarGreen(lowerBoundGreen);
+		view.registerUpperBoundScalarGreen(upperBoundGreen);
 		
 		//Index: O - Externe Kamera (wenn vorhanden)
 		//Index: 1 - Interne Kamera (wenn keine externe angeschlossen)
-		VideoCapture camera = new VideoCapture(1);
+		VideoCapture camera = new VideoCapture(0);
 
 		Mat frame = new Mat();
 		camera.read(frame); 
@@ -66,6 +68,9 @@ public class FindPlayer {
 		} else {                  
 			boolean firstRun = true;
 
+			int counter = 0;
+			Player bluePlayerMean = null;
+			Player greenPlayerMean = null;
 			while (true) {
 				Thread.sleep(100);
 				
@@ -89,13 +94,15 @@ public class FindPlayer {
 				Imgproc.cvtColor(frame, hsvFrame, Imgproc.COLOR_BGR2HSV);             	
 
 				
-				
+			
+			
 				//=============================================================================================
 				//=============================================================================================				
 				//Team 1 - Farbbereich blau
 				Mat bwFrameBlue = new Mat();
 				List<RotatedRect> candidatesBlue = detectPlayerCandidates(BLUE_TEAM, hsvFrame, bwFrameBlue);
 
+				
 				//Gefundene RotatedRects ins Bild zeichnen
 				Imgproc.cvtColor(bwFrameBlue, bwFrameBlue, Imgproc.COLOR_GRAY2BGR);
 				drawCandidates(candidatesBlue, BLUE_TEAM, bwFrameBlue);
@@ -105,7 +112,7 @@ public class FindPlayer {
 
 				//=============================================================================================
 				//=============================================================================================	
-				//Team 1 - Farbbereich grün
+				//Team 1 - Farbbereich grï¿½n
 				Mat bwFrameGreen = new Mat();
 				List<RotatedRect> candidatesGreen = detectPlayerCandidates(GREEN_TEAM, hsvFrame, bwFrameGreen);
 				//Convert to color pic
@@ -117,11 +124,34 @@ public class FindPlayer {
 				Player[] greenPlayer = detectPlayer(candidatesGreen, GREEN_TEAM, bwFrameGreen);
 				//=============================================================================================
 				//=============================================================================================				
-				determineAttackedPlayer(bluePlayer, greenPlayer);
-				
-
+					
 				//Visualize results
 				view.updateView(bwFrameBlue, bwFrameGreen, frame);
+
+				
+				
+				if(bluePlayer[0] != null) {
+					if(bluePlayerMean == null) {
+						bluePlayerMean = bluePlayer[0];
+					}
+					bluePlayerMean.setDirection((bluePlayerMean.getDirection() + bluePlayer[0].getDirection())/2);
+				}
+				
+				if(greenPlayer[0] != null) {
+					if(greenPlayerMean == null) {
+						greenPlayerMean = greenPlayer[0];
+					}
+					greenPlayerMean.setDirection((greenPlayerMean.getDirection() + greenPlayer[0].getDirection())/2);
+				}
+				
+				
+				if(counter != 0 && counter%10 == 0) {
+					counter = 0;
+					if(bluePlayerMean!= null && greenPlayerMean != null) {
+						determineAttackedPlayer(new Player[] {bluePlayerMean}, new Player[] {greenPlayerMean});
+					}
+				}
+				counter ++;
 				
 				if(firstRun) {
 					firstRun = !firstRun;
@@ -176,7 +206,7 @@ public class FindPlayer {
 	}
 	
 	public static Player[] detectPlayer(List<RotatedRect> candidates, String team, Mat outputFrame ) {
-		Player[] player = new Player[]{};
+		Player[] player = new Player[]{null};
 		//calculate and draw player orientation
 		if(candidates.size() != 0 && candidates.size() % 2 == 0) { 
 			//Get closest edges from two rectangles
@@ -210,12 +240,13 @@ public class FindPlayer {
 				Imgproc.line(outputFrame, pOrthToPoint, pIntersection, color);
 				
 				//TODO: Handle Events!
-				System.out.println(playerOrientation);
 				Point c1 = candidates.get(0).center;
 				Point c2 = candidates.get(1).center;
 				Point position = new Point((c1.x + c2.x) / 2, (c1.y + c2.y) / 2);
 				Player p = new Player(1, team, position, playerOrientation);
 				player = new Player[]{p};
+				
+				//System.out.println("Direction: " + playerOrientation);
 			}					
 		}
 		return player;
@@ -223,7 +254,7 @@ public class FindPlayer {
 	
 	public static void determineAttackedPlayer(Player[] blueTeam, Player[] greenTeam) {
 		// TODO Determine threshold
-		double distanceThreshold = 4.00; 
+		double distanceThreshold = 400.00; 
 		PlayingField field = new PlayingField();
 		
 		for (Player bluePlayer: blueTeam) {
@@ -233,10 +264,10 @@ public class FindPlayer {
 					continue;
 				}
 				
-				if (field.isPlayerAttacked(bluePlayer, greenPlayer)) {
-					generateAlert(bluePlayer);
-				} else if (field.isPlayerAttacked(greenPlayer, bluePlayer)) {
-					generateAlert(greenPlayer);
+				if (field.isPlayerAttacked(bluePlayer, greenPlayer) != PlayingField.NOT_ATTACKED) {
+					generateAlert(bluePlayer, PlayingField.ATTACK_DIRECTION_BEHIND);
+				} else if (field.isPlayerAttacked(greenPlayer, bluePlayer) != PlayingField.NOT_ATTACKED) {
+					generateAlert(greenPlayer, PlayingField.ATTACK_DIRECTION_BEHIND);
 				}
 			}
 		}
@@ -353,6 +384,11 @@ public class FindPlayer {
 			}
 		}
 		
+//		start1.x = (start1.x + rect1.center.x)/2;
+//		start1.y = (start1.y + rect1.center.y)/2;
+//		start2.x = (start2.x + rect2.center.x)/2;
+//		start2.y = (start2.y + rect2.center.y)/2;
+		
 		startPoints.add(start1);
 		startPoints.add(start2);	
 		return startPoints;
@@ -409,8 +445,8 @@ public class FindPlayer {
 		return intersectionPoint;
 	}
 
-	public static void generateAlert(Player player) {
+	public static void generateAlert(Player player, int attackDirection) {
 		//TODO: Alert erzeugen
-		System.out.println(player.getTeam() + " attacked");
+		System.out.println(player.getTeam() + " attacked from behind!");
 	}
 }
