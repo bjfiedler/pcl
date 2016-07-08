@@ -38,21 +38,25 @@ import org.opencv.videoio.VideoCapture;
 
 public class FindPlayer {
 	private static boolean cameraMode = false;
-
+	private static Scalar lowerBoundBlue = new Scalar(0, 0, 0); 
+	private static Scalar upperBoundBlue = new Scalar(0, 0, 0);
+	private static Scalar lowerBoundGreen = new Scalar(0, 0, 0);
+	private static Scalar upperBoundGreen = new Scalar(0, 0, 0);
+	private static final String BLUE_TEAM = "BLUE_TEAM";
+	private static final String GREEN_TEAM = "GREEN_TEAM";
 	
 
 	public static void main( String[] args ) throws InterruptedException {
 		System.loadLibrary(Core.NATIVE_LIBRARY_NAME);		
 		Test t = new Test();
+		
 		FindPlayerView view = new FindPlayerView();
-		Scalar lowerb = new Scalar(0, 0, 0);
-		Scalar upperb = new Scalar(0, 0, 0);
-		view.registerLowerBoundScalar(lowerb);
-		view.registerUpperBoundScalar(upperb);
+		view.registerLowerBoundScalar(lowerBoundBlue);
+		view.registerUpperBoundScalar(upperBoundBlue);
 		
 		//Index: O - Externe Kamera (wenn vorhanden)
 		//Index: 1 - Interne Kamera (wenn keine externe angeschlossen)
-		VideoCapture camera = new VideoCapture(0);
+		VideoCapture camera = new VideoCapture(1);
 
 		Mat frame = new Mat();
 		camera.read(frame); 
@@ -85,92 +89,39 @@ public class FindPlayer {
 				Imgproc.cvtColor(frame, hsvFrame, Imgproc.COLOR_BGR2HSV);             	
 
 				
-
-				//Team 1 - Farbbereich blau
-				Mat bwFrame = new Mat();
-				//Scalar lowerb = new Scalar(hSilderLow.getValue(), sSilderLow.getValue(), vSilderLow.getValue());
-				//Scalar upperb = new Scalar(hSilderUp.getValue(), sSilderUp.getValue(), vSilderUp.getValue());
-				
-				Core.inRange(hsvFrame, lowerb, upperb, bwFrame);
-
-				//morphologische Basis-Operation: Closing (Dilatation>Erosion)
-				bwFrame = imDialte(bwFrame, 0, 5);
-				bwFrame = imErode(bwFrame, 0, 5);
-
-				//morphologische Basis-Operation: Opening (Erosion>Dilatation)
-				bwFrame = imErode(bwFrame, 0, 5);
-				bwFrame = imDialte(bwFrame, 0, 5);                	
-
-				//RotatedRects im Bild finden
-				List<RotatedRect> rects = findRectContour(bwFrame);
-
-				//Convert to color pic
-				Imgproc.cvtColor(bwFrame, bwFrame, Imgproc.COLOR_GRAY2BGR);
-
-				//Gefundene RotatedRects ins Bild zeichnen
-				for(RotatedRect r:rects) {
-					Point[] pt = new Point[4];
-					r.points(pt);
-
-					Scalar color = new Scalar(0, 0, 255);                		
-					for(int i=0; i<4; i++) {
-						Imgproc.line(bwFrame, pt[i], pt[(i+1)%4], color, 3, 8, 0);
-					}           
-
-					Imgproc.circle(bwFrame, r.center, 2, color, 3);
-				}
 				
 				//=============================================================================================
 				//=============================================================================================				
-				
-				//calculate and draw plaver oriantation
-				if(rects.size() != 0 && rects.size() % 2 == 0) { 
-					//Get closest edges from two rectangles
-					ArrayList<Point> startPoints = getStartPointsFromRec(rects.get(0), rects.get(1));
-					
-					//Get line (short side) for each rectangle
-					ArrayList<Point> line1 = getLineFromRect(startPoints.get(0), rects.get(0));
-					ArrayList<Point> line2 = getLineFromRect(startPoints.get(1), rects.get(1));
+				//Team 1 - Farbbereich blau
+				Mat bwFrameBlue = new Mat();
+				List<RotatedRect> candidatesBlue = detectPlayerCandidates(BLUE_TEAM, hsvFrame, bwFrameBlue);
 
-					//Get Intersection point (null if non exists)
-					Point pIntersection = getLineIntersection(line1, line2);
-					if(pIntersection != null) {
+				//Gefundene RotatedRects ins Bild zeichnen
+				Imgproc.cvtColor(bwFrameBlue, bwFrameBlue, Imgproc.COLOR_GRAY2BGR);
+				drawCandidates(candidatesBlue, BLUE_TEAM, bwFrameBlue);
+				drawCandidates(candidatesBlue, BLUE_TEAM, frame);
+				Player[] bluePlayer = detectPlayer(candidatesBlue, BLUE_TEAM, bwFrameBlue);
 
-						//Draw green rectangle for player direction visualisation
-						Scalar color = new Scalar(0, 255, 0);
-						Imgproc.line(bwFrame, pIntersection, line1.get(0), color);
-						Imgproc.line(bwFrame, pIntersection, line2.get(0), color);
-						Imgproc.line(bwFrame, startPoints.get(0), startPoints.get(1), color);
-
-						//Draw intersection point for player direction visualisation
-						color = new Scalar(255, 0, 0);
-						Imgproc.circle(bwFrame, pIntersection, 2, color, 10);
-						
-						//Get player orientation vector and value
-						Point pOrthToPoint = getOrthogonalIntersectionPoint(pIntersection, startPoints.get(0), getDeirectionalVectorForLine(startPoints.get(0), startPoints.get(1)));
-						double playerOrientation = getDirection(pOrthToPoint, pIntersection);
-
-						//Draw player orientation vector
-						//Imgproc.circle(bwFrame, newP, 2, color, 10);
-						color = new Scalar(0, 0, 255);
-						Imgproc.line(bwFrame, pOrthToPoint, pIntersection, color);
-						
-						//TODO: Handle Events!
-						System.out.println(playerOrientation);
-					}					
-				}
 
 				//=============================================================================================
 				//=============================================================================================	
+				//Team 1 - Farbbereich grün
+				Mat bwFrameGreen = new Mat();
+				List<RotatedRect> candidatesGreen = detectPlayerCandidates(GREEN_TEAM, hsvFrame, bwFrameGreen);
+				//Convert to color pic
 				
-//            	//Team 2 - Farbbereich grÃ¼n
-//            	Mat destFrame = new Mat();
-//            	Scalar lowerb = new Scalar(hSilderLow.getValue(), sSilderLow.getValue(), vSilderLow.getValue());
-//            	Scalar upperb = new Scalar(hSilderUp.getValue(), sSilderUp.getValue(), vSilderUp.getValue());
-//            	Core.inRange(hsvFrame, lowerb, upperb, destFrame);
+				//Gefundene RotatedRects ins Bild zeichnen
+				Imgproc.cvtColor(bwFrameGreen, bwFrameGreen, Imgproc.COLOR_GRAY2BGR);
+				drawCandidates(candidatesGreen, GREEN_TEAM, bwFrameGreen);
+				drawCandidates(candidatesGreen, GREEN_TEAM, frame);
+				Player[] greenPlayer = detectPlayer(candidatesGreen, GREEN_TEAM, bwFrameGreen);
+				//=============================================================================================
+				//=============================================================================================				
+				determineAttackedPlayer(bluePlayer, greenPlayer);
+				
 
 				//Visualize results
-				view.updateView(bwFrame, frame);
+				view.updateView(bwFrameBlue, bwFrameGreen, frame);
 				
 				if(firstRun) {
 					firstRun = !firstRun;
@@ -179,6 +130,116 @@ public class FindPlayer {
 			}
 		}   
 		if (view.isCameraMode()) { camera.release(); }
+	}
+	
+	public static List<RotatedRect> detectPlayerCandidates(String team, Mat inputFrame, Mat bwFrame) {
+		//Mat bwFrame = new Mat();
+		if (team.equals(BLUE_TEAM)) {
+			Core.inRange(inputFrame, lowerBoundBlue, upperBoundBlue, bwFrame);
+		} else {
+			Core.inRange(inputFrame, lowerBoundGreen, upperBoundGreen, bwFrame);
+		}
+
+		//morphologische Basis-Operation: Closing (Dilatation>Erosion)
+		bwFrame = imDialte(bwFrame, 0, 5);
+		bwFrame = imErode(bwFrame, 0, 5);
+
+		//morphologische Basis-Operation: Opening (Erosion>Dilatation)
+		bwFrame = imErode(bwFrame, 0, 5);
+		bwFrame = imDialte(bwFrame, 0, 5);                	
+
+		//RotatedRects im Bild finden
+		List<RotatedRect> rects = findRectContour(bwFrame);
+		
+		return rects;
+	}
+	
+	public static void drawCandidates(List<RotatedRect> candidates, String team, Mat outputFrame) {
+		//Gefundene RotatedRects ins Bild zeichnen
+		Scalar color;
+		if (team.equals(BLUE_TEAM)) {
+			color = new Scalar(255, 0, 0);
+		} else {
+			color = new Scalar(0, 255, 0);
+		}
+		for(RotatedRect r:candidates) {
+			Point[] pt = new Point[4];
+			r.points(pt);
+
+			                		
+			for(int i=0; i<4; i++) {
+				Imgproc.line(outputFrame, pt[i], pt[(i+1)%4], color, 3, 8, 0);
+			}           
+
+			Imgproc.circle(outputFrame, r.center, 2, color, 3);
+		}
+	}
+	
+	public static Player[] detectPlayer(List<RotatedRect> candidates, String team, Mat outputFrame ) {
+		Player[] player = new Player[]{};
+		//calculate and draw player orientation
+		if(candidates.size() != 0 && candidates.size() % 2 == 0) { 
+			//Get closest edges from two rectangles
+			ArrayList<Point> startPoints = getStartPointsFromRec(candidates.get(0), candidates.get(1));
+			
+			//Get line (short side) for each rectangle
+			ArrayList<Point> line1 = getLineFromRect(startPoints.get(0), candidates.get(0));
+			ArrayList<Point> line2 = getLineFromRect(startPoints.get(1), candidates.get(1));
+
+			//Get Intersection point (null if non exists)
+			Point pIntersection = getLineIntersection(line1, line2);
+			if(pIntersection != null) {
+
+				//Draw green rectangle for player direction visualization
+				Scalar color = new Scalar(0, 255, 0);
+				Imgproc.line(outputFrame, pIntersection, line1.get(0), color);
+				Imgproc.line(outputFrame, pIntersection, line2.get(0), color);
+				Imgproc.line(outputFrame, startPoints.get(0), startPoints.get(1), color);
+
+				//Draw intersection point for player direction visualization
+				color = new Scalar(255, 0, 0);
+				Imgproc.circle(outputFrame, pIntersection, 2, color, 10);
+				
+				//Get player orientation vector and value
+				Point pOrthToPoint = getOrthogonalIntersectionPoint(pIntersection, startPoints.get(0), getDeirectionalVectorForLine(startPoints.get(0), startPoints.get(1)));
+				double playerOrientation = getDirection(pOrthToPoint, pIntersection);
+
+				//Draw player orientation vector
+				//Imgproc.circle(bwFrame, newP, 2, color, 10);
+				color = new Scalar(0, 0, 255);
+				Imgproc.line(outputFrame, pOrthToPoint, pIntersection, color);
+				
+				//TODO: Handle Events!
+				System.out.println(playerOrientation);
+				Point c1 = candidates.get(0).center;
+				Point c2 = candidates.get(1).center;
+				Point position = new Point((c1.x + c2.x) / 2, (c1.y + c2.y) / 2);
+				Player p = new Player(1, team, position, playerOrientation);
+				player = new Player[]{p};
+			}					
+		}
+		return player;
+	}
+	
+	public static void determineAttackedPlayer(Player[] blueTeam, Player[] greenTeam) {
+		// TODO Determine threshold
+		double distanceThreshold = 4.00; 
+		PlayingField field = new PlayingField();
+		
+		for (Player bluePlayer: blueTeam) {
+			for (Player greenPlayer: greenTeam) {
+				double dist = getDistance(bluePlayer.getPosition(), greenPlayer.getPosition());
+				if (dist > distanceThreshold) {
+					continue;
+				}
+				
+				if (field.isPlayerAttacked(bluePlayer, greenPlayer)) {
+					generateAlert(bluePlayer);
+				} else if (field.isPlayerAttacked(greenPlayer, bluePlayer)) {
+					generateAlert(greenPlayer);
+				}
+			}
+		}
 	}
 
 	public static Mat imErode(Mat srcImg, int erosionElem, int erosionSize) {
@@ -348,7 +409,8 @@ public class FindPlayer {
 		return intersectionPoint;
 	}
 
-	public static void generateAlert() {
+	public static void generateAlert(Player player) {
 		//TODO: Alert erzeugen
+		System.out.println(player.getTeam() + " attacked");
 	}
 }

@@ -29,7 +29,7 @@ import org.opencv.imgproc.Imgproc;
 
 public class FindPlayerView {
 	protected static ColorConfig cConfig;
-	private boolean cameraMode = false;
+	private boolean cameraMode = true;
 
 	private static JList<String> cList;
 	private static JTextField configName;
@@ -48,7 +48,8 @@ public class FindPlayerView {
 	private JSlider sSliderUp;
 	private JSlider vSliderUp;
 	private JLabel originalPic;
-	private JLabel processedPic;
+	private JLabel processedPicBlue;
+	private JLabel processedPicGreen;
 	
 	private Scalar upperBoundScalar;
 	private Scalar lowerBoundScalar;
@@ -79,7 +80,8 @@ public class FindPlayerView {
 		panelUp.setBorder(BorderFactory.createTitledBorder("HSV-Upper-Range"));
 
 		originalPic = new JLabel();
-		processedPic = new JLabel();
+		processedPicBlue = new JLabel();
+		processedPicGreen = new JLabel();
 
 		hSliderLow = new JSlider(0, 360, 0);
 		sSliderLow = new JSlider(0, 255, 100);
@@ -250,7 +252,8 @@ public class FindPlayerView {
 		jPanel.add(remove);
 
 		jFrame.add(originalPic);
-		jFrame.add(processedPic); 
+		jFrame.add(processedPicBlue);
+		jFrame.add(processedPicGreen);
 		jFrame.add(jPanel); 
 		jFrame.add(switchMode);
 
@@ -263,15 +266,20 @@ public class FindPlayerView {
 	
 	
 	
-	public void updateView(Mat processedFrame, Mat originalFrame) {
+	public void updateView(Mat processedFrameBlue, Mat processedFrameGreen, Mat originalFrame) {
 		Size s = new Size(640, 480);
-		Imgproc.resize(processedFrame, processedFrame, s);
 		Imgproc.resize(originalFrame, originalFrame, s);
+		s = new Size(320, 240);
+		Imgproc.resize(processedFrameBlue, processedFrameBlue, s);
+		Imgproc.resize(processedFrameGreen, processedFrameGreen, s);
+		
 
 		BufferedImage originalImage = Test.MatToBufferedImage(originalFrame);
-		BufferedImage processedImage = Test.MatToBufferedImage(processedFrame);
+		BufferedImage processedImageBlue = Test.MatToBufferedImage(processedFrameBlue);
+		BufferedImage processedImageGreen = Test.MatToBufferedImage(processedFrameGreen);
 		originalPic.setIcon(new ImageIcon(originalImage));                    
-		processedPic.setIcon(new ImageIcon(processedImage));
+		processedPicBlue.setIcon(new ImageIcon(processedImageBlue));
+		processedPicGreen.setIcon(new ImageIcon(processedImageGreen));
 	}
 	
 	
