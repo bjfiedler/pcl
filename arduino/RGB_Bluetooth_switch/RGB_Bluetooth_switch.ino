@@ -215,7 +215,7 @@ void loop(void)
     if (currentBallState != lastBallState) {
       lastBallState = currentBallState;
       ballChangeTime = currentTime;
-      ble.write(currentBallState?'f':'F');
+//      ble.write(currentBallState?'f':'F');
       if (currentBallState == LOSGELASSEN) {
         flash = false;
         digitalWrite(3, LOW);
@@ -227,7 +227,7 @@ void loop(void)
 
   }
 
-  else
+  else if (!currentSound)
     // Echo received data
     //  while ( ble.available() )
     if ( ble.available() )
