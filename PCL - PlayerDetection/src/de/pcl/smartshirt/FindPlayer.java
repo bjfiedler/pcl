@@ -8,6 +8,11 @@ import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
 import java.io.File;
 import java.io.IOException;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -37,6 +42,9 @@ import org.opencv.imgproc.Imgproc;
 import org.opencv.videoio.VideoCapture;
 
 public class FindPlayer {
+	private static final String HOST_IP_ADDRESS = "192.168.13.1";
+	private static final int HOST_PORT = 5000;
+	
 	private static boolean cameraMode = false;
 	private static Scalar lowerBoundBlue = new Scalar(0, 0, 0); 
 	private static Scalar upperBoundBlue = new Scalar(0, 0, 0);
@@ -47,6 +55,12 @@ public class FindPlayer {
 	
 
 	public static void main( String[] args ) throws InterruptedException {
+		try {
+			sendUDP("B");
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
 		System.loadLibrary(Core.NATIVE_LIBRARY_NAME);		
 		Test t = new Test();
 		
@@ -264,6 +278,7 @@ public class FindPlayer {
 					continue;
 				}
 				
+				
 				if (field.isPlayerAttacked(bluePlayer, greenPlayer) != PlayingField.NOT_ATTACKED) {
 					generateAlert(bluePlayer, PlayingField.ATTACK_DIRECTION_BEHIND);
 				} else if (field.isPlayerAttacked(greenPlayer, bluePlayer) != PlayingField.NOT_ATTACKED) {
@@ -447,6 +462,31 @@ public class FindPlayer {
 
 	public static void generateAlert(Player player, int attackDirection) {
 		//TODO: Alert erzeugen
-		System.out.println(player.getTeam() + " attacked from behind!");
+		System.out.println("\n"+player.getTeam() + " attacked from behind!");
+		try {
+			sendUDP("JKL");
+			Thread.sleep(1000);
+			sendUDP("jkl");
+		} catch (IOException | InterruptedException e) {
+			e.printStackTrace();
+		}
 	}
+	
+	public static void sendUDP(String s) throws IOException {
+		System.out.println("Gesendete Daten: "+s);
+		s = s + "\n";		
+		DatagramSocket clientSocket = new DatagramSocket(5000);
+		InetAddress IPAddress = InetAddress.getByName(HOST_IP_ADDRESS);
+		byte[] sendData = new byte[1024];
+		//byte[] receiveData = new byte[1024];
+		sendData = s.getBytes();
+		DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, IPAddress, HOST_PORT);
+		clientSocket.send(sendPacket);
+		//DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
+		//clientSocket.receive(receivePacket);
+		//String answer = new String(receivePacket.getData());
+		clientSocket.close();
+	}
+	
+	
 }

@@ -5,6 +5,7 @@ import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
+import java.io.IOException;
 import java.util.List;
 
 import javax.swing.AbstractButton;
@@ -240,6 +241,21 @@ public class FindPlayerView {
 				cameraMode = !cameraMode;
 			}
 		});
+		
+		JButton vibrateBtn = new JButton("Make Vibration");
+		vibrateBtn.addActionListener(new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				try {
+					FindPlayer.sendUDP("JKL");
+					Thread.sleep(1000);
+					FindPlayer.sendUDP("jkl");					
+				} catch (IOException | InterruptedException e1) {
+					e1.printStackTrace();
+				}
+			}
+		});
 
 		configName = new JTextField("default");
 		cList = new JList<String>();
@@ -278,8 +294,10 @@ public class FindPlayerView {
 		jPanelPic.add(processedPicGreen);
 		jFrame.add(jPanelPic);
 		jFrame.add(jPanel); 
+		jFrame.add(vibrateBtn);
 		jFrame.add(setupSlider());
 		jFrame.add(switchMode);
+		
 
 		jFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		jFrame.setTitle("LiveStream BlackWhite");
