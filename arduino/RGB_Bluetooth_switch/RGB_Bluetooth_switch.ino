@@ -94,6 +94,23 @@ void error(const __FlashStringHelper*err) {
 /**************************************************************************/
 void setup(void)
 {
+  pinMode(5, OUTPUT);
+  pinMode(6, OUTPUT);
+  pinMode(9, OUTPUT);
+  pinMode(10, OUTPUT);
+  pinMode(11, OUTPUT);
+  pinMode(12, OUTPUT);
+  pinMode(13, OUTPUT);
+  digitalWrite(5, LOW);
+  digitalWrite(6, LOW);
+  digitalWrite(9, LOW);
+  digitalWrite(10, LOW);
+  digitalWrite(11, LOW);
+  digitalWrite(12, LOW);
+  digitalWrite(13, LOW);
+#define BALLPIN 21
+  pinMode(BALLPIN, INPUT);
+
   //  while (!Serial);  // required for Flora & Micro
   delay(500);
 
@@ -152,20 +169,7 @@ void setup(void)
   ble.setMode(BLUEFRUIT_MODE_DATA);
 
   Serial.println(F("******************************"));
-  pinMode(5, OUTPUT);
-  pinMode(6, OUTPUT);
-  pinMode(9, OUTPUT);
-  pinMode(10, OUTPUT);
-  pinMode(11, OUTPUT);
-  pinMode(12, OUTPUT);
-  pinMode(13, OUTPUT);
-  digitalWrite(5, LOW);
-  digitalWrite(6, LOW);
-  digitalWrite(9, LOW);
-  digitalWrite(10, LOW);
-  digitalWrite(11, LOW);
-  digitalWrite(12, LOW);
-  digitalWrite(13, LOW);
+
 }
 #include"AchtungHintermann.raw.h"
 #include"Aus.raw.h"
@@ -174,11 +178,19 @@ void setup(void)
 #include"Trillerpfeife.raw.h"
 #include"StilleHalbeSekunde.raw.h"
 unsigned long timeForNextSample = 0;
+unsigned long currentTime = 0;
+unsigned long timeForNextFlash = 0;
 const unsigned char* sounds[] = {0, AchtungHintermann, Aus, DreiSekunden, HerzlichWillkommen, Trillerpfeife, StilleHalbeSekunde};
 const uint16_t soundLength[] = {0, sizeof(AchtungHintermann), sizeof(Aus), sizeof(DreiSekunden), sizeof(HerzlichWillkommen), sizeof(Trillerpfeife), sizeof(StilleHalbeSekunde)};
 uint8_t currentSound = 0;
 uint16_t currentSample = 0;
+uint8_t flashState = HIGH;
 bool flash = false;
+
+uint8_t lastBallState = 0, currentBallState = 0;
+unsigned long ballChangeTime = 0;
+#define LOSGELASSEN 1
+#define FESTGEHALTEN 0
 /**************************************************************************/
 /*!
     @brief  Constantly poll for new command or response data
@@ -186,31 +198,30 @@ bool flash = false;
 /**************************************************************************/
 void loop(void)
 {
-  // Check for user input
-  //  char n, inputs[BUFSIZE+1];
-  //
-  //  if (Serial.available())
-  //  {
-  //    n = Serial.readBytes(inputs, BUFSIZE);
-  //    inputs[n] = 0;
-  //    // Send characters to Bluefruit
-  //    Serial.print("Sending: ");
-  //    Serial.println(inputs);
-  //
-  //    // Send input data to host via Bluefruit
-  //    ble.print(inputs);
-  //  }
+  currentTime = micros();
 
-  if (currentSound) {
-    if (micros() >= timeForNextSample) {
+  if (currentTime >= timeForNextSample) {
+    if (currentSound) {
       if (currentSample < soundLength[currentSound]) {
 
         analogWrite(10, sounds[currentSound][currentSample++]);
-        timeForNextSample += 125;
       }
-      else{
-      currentSound = 0;
+      else {
+        currentSound = 0;
       }
+    }
+    timeForNextSample += 125;
+    currentBallState = digitalRead(BALLPIN);
+    if (currentBallState != lastBallState) {
+      lastBallState = currentBallState;
+      ballChangeTime = currentTime;
+      if (currentBallState == LOSGELASSEN) {
+        flash = false;
+        digitalWrite(3, LOW);
+      }
+    }
+    if (lastBallState == FESTGEHALTEN && (currentTime - ballChangeTime) > 3000000) {
+      flash = true;
     }
 
   }
@@ -238,28 +249,26 @@ void loop(void)
         case 'j': digitalWrite(11, LOW); break;
         case 'k': digitalWrite(12, LOW); break;
         case 'l': digitalWrite(13, LOW); break;
-        case '1': currentSample=0;currentSound=1; timeForNextSample = micros() + 125; break;
-        case '2': currentSample=0;currentSound=2; timeForNextSample = micros() + 125; break;
-        case '3': currentSample=0;currentSound=3; timeForNextSample = micros() + 125; break;
-        case '4': currentSample=0;currentSound=4; timeForNextSample = micros() + 125; break;
-        case 'p': currentSample=0;currentSound=6; timeForNextSample = micros() + 125; break;
+        case '1': currentSample = 0; currentSound = 1; timeForNextSample = micros() + 125; break;
+        case '2': currentSample = 0; currentSound = 2; timeForNextSample = micros() + 125; break;
+        case '3': currentSample = 0; currentSound = 3; timeForNextSample = micros() + 125; break;
+        case '4': currentSample = 0; currentSound = 4; timeForNextSample = micros() + 125; break;
+        case 'p': currentSample = 0; currentSound = 6; timeForNextSample = micros() + 125; break;
         case '5':
         case 't':
-        case 'T': currentSample=0;currentSound=5; timeForNextSample = micros() + 125; break;
-        case 'F': flash = true; break;
+        case 'T': currentSample = 0; currentSound = 5; timeForNextSample = micros() + 125; break;
+        case 'F': flash = true; timeForNextFlash = currentTime; break;
         case 'f': flash = false; break;
 
 
       }
-
-
-      //    Serial.print('t',HEX);
-      //
-      //    // Hex output too, helps w/debugging!
-      //    Serial.print(" [0x");
-      //    if (c <= 0xF) Serial.print(F("0"));
-      //    Serial.print(c, HEX);
-      //    Serial.print("] ");
     }
+  if (currentTime >= timeForNextFlash) {
+    if (flash || flashState) {
+      flashState = !flashState;
+      digitalWrite(6, flashState);
+      timeForNextFlash += 300000;
+    }
+  }
 
 }

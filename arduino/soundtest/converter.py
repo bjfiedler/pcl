@@ -18,5 +18,5 @@ with open(sys.argv[1],'rb') as infile:
         while b != "":
             out.write(","+str(ord(b)))
             b = infile.read(1)
-        out.write("};")
+        out.write(",0};")
         
